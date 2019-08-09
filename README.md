@@ -2,6 +2,6 @@
 
 
 #### semi-usefull things
-Name | Description | Usage
----- | ----------- | -----
-NBI_lib.h | Single-file "Non-Blocking Input" Library | ???
+Name | Description | Usage | Lang
+---- | ----------- | ----- | ----
+NBI_lib.h | Single-file "Non-Blocking Input" Library | Creating games in terminal | C/C++
