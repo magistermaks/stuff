@@ -24,7 +24,7 @@
  */ 
 
 /* Main feature of this library is the nbi_get_chr(),
- * which is platform independent non-blocking input function. It return key from input stream (stdin) or
+ * which is platform independent non-blocking input function. It returns key from input stream (stdin) or
  * -1 if the stream is empty. It removes the returned char from the stream.
  * 
  * Other functions:
@@ -35,7 +35,7 @@
  * bool nbi_get_flag()            - Returns true if there is any key in the stream, and false otherwise. (platform independent version of _kbhit())
  * 
  * Functions avaible only on linux-like systems:
- * void nbi_termios_update()      - Must by called after using tcsetattr() from "termios.h".
+ * void nbi_termios_update()      - Must be called after using tcsetattr() from "termios.h".
  */
 
 /* Key enums:
@@ -54,14 +54,14 @@
  * NBI_LIB_LINUX          - Don't check build environment, assume linux-like.
  * NBI_LIB_ASSUME_STDIO   - Don't include stdio.h, assume already included.
  * NBI_LIB_ASSUME_TERMIOS - Don't include termios.h, assume already included. (If you are using termios you may want to read more about nbi_termios_update() and NBI_LIB_NO_TERMIOS_POP)
- * NBI_LIB_NO_TERMIOS_POP - Is ignered if not compiled on linux, makes nbi_get_chr() calls (technically) faster. Breaks input line buffering. 
+ * NBI_LIB_NO_TERMIOS_POP - Is ignored if not compiled on linux, makes nbi_get_chr() calls (technically) faster. Breaks input line buffering. 
  * NBI_LIB_IMPEMENTATION  - This file will act as .c not .h
  */
 
 /* Limitations:
- * This library implements platform independent non-blocking input, but it don't
+ * This library implements platform independent non-blocking input, but it doesn't
  * supply any way to interpret that input. Different systems encode (some) keys in different ways,
- * Eg. Arrows on MacOS are encoded as 3 chars: 27, 91, [65, 66, 67, 68] (UP, DOWN, RIGHT, LEFT)
+ * e.g. Arrows on MacOS are encoded as 3 chars: 27, 91, [65, 66, 67, 68] (UP, DOWN, RIGHT, LEFT)
  * while Windows use only 2 chars: -32, [72, 80, 77, 75].
  */
 
@@ -69,6 +69,7 @@
  * 1.0 - Initial version.
  * 1.1 - Bug fix.
  * 1.2 - Added enums.
+ * 1.3 - Fixed typos.
  */
 
 #ifdef NBI_LIB_WINDOWS
