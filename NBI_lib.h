@@ -70,6 +70,7 @@
  * 1.1 - Bug fix.
  * 1.2 - Added enums.
  * 1.3 - Fixed typos.
+ * 1.4 - Fixed typo.
  */
 
 #ifdef NBI_LIB_WINDOWS
@@ -249,7 +250,7 @@ void nbi_set_echo( bool echo ) {
     if( echo )
         __nbi_termios_state_required.c_lflag |= ECHO;
     else
-        __nbi_termios_state_required.c_lflag &= ~ECHO;;
+        __nbi_termios_state_required.c_lflag &= ~ECHO;
 #endif
 }
 
