@@ -2,7 +2,7 @@
  * 
  * MIT License
  * 
- * Copyright (c) 2019 magistermaks
+ * Copyright (c) 2020 magistermaks
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +23,15 @@
  * SOFTWARE.
  */ 
 
-/* Main feature of this library is the nbi_get_chr(),
+/* Main feature of this library is the nbi_get_char(),
  * which is platform independent non-blocking input function. It returns key from input stream (stdin) or
  * -1 if the stream is empty. It removes the returned char from the stream.
  * 
  * Other functions:
- * void nbi_clear()               - Removes all characters from input stream, so that nbi_get_chr() will return -1, and nbi_get_flag() false.
- * char nbi_standard_input()      - Waits for key press and returns it, acts like windows' getch() but is platform independent.
+ * void nbi_clear()               - Removes all characters from input stream, so that nbi_get_char() will return -1, and nbi_get_flag() false.
+ * char nbi_std_input()           - Waits for key press and returns it, acts like windows' getch() but is platform independent.
  * void nbi_wait()                - Waits for key press, then continues execution.
- * void nbi_set_echo( bool echo ) - Sets current echo mode. When set to true nbi_get_chr(), nbi_standard_input() will display pressed char, the default value is false.
+ * void nbi_set_echo( bool echo ) - Sets current echo mode. When set to true nbi_get_char(), nbi_std_input() will display pressed char, the default value is false.
  * bool nbi_get_flag()            - Returns true if there is any key in the stream, and false otherwise. (platform independent version of _kbhit())
  * 
  * Functions avaible only on linux-like systems:
@@ -54,8 +54,8 @@
  * NBI_LIB_LINUX          - Don't check build environment, assume linux-like.
  * NBI_LIB_ASSUME_STDIO   - Don't include stdio.h, assume already included.
  * NBI_LIB_ASSUME_TERMIOS - Don't include termios.h, assume already included. (If you are using termios you may want to read more about nbi_termios_update() and NBI_LIB_NO_TERMIOS_POP)
- * NBI_LIB_NO_TERMIOS_POP - Is ignored if not compiled on linux, makes nbi_get_chr() calls (technically) faster. Breaks input line buffering. 
- * NBI_LIB_IMPEMENTATION  - This file will act as .c not .h
+ * NBI_LIB_NO_TERMIOS_POP - Is ignored if not compiled on linux, makes nbi_get_char() calls (technically) faster. Breaks input line buffering. 
+ * NBI_LIB_IMPLEMENTATION - This file will act as .c not .h
  */
 
 /* Limitations:
@@ -71,6 +71,7 @@
  * 1.2 - Added enums.
  * 1.3 - Fixed typos.
  * 1.4 - Fixed typo.
+ * 1.5 - Fixed bugs, renamed functions.
  */
 
 #ifdef NBI_LIB_WINDOWS
@@ -90,8 +91,6 @@
 #error "Build environment test failed. Define NBI_LIB_WINDOWS or NBI_LIB_LINUX."
 #endif
 #endif
-
-#ifndef NBI_LIB_IMPEMENTATION
 
 #ifndef __NBI_HEADER
 #define __NBI_HEADER
@@ -132,9 +131,13 @@
 
 #define NBI_KEY_NONE -1
 
-char nbi_get_chr();
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+char nbi_get_char();
 bool nbi_get_flag();
-char nbi_standard_input();
+char nbi_std_input();
 void nbi_set_echo( bool echo );
 void nbi_clear();
 void nbi_wait();
@@ -155,12 +158,18 @@ extern bool __nbi_termios_initialized;
 extern bool __nbi_termios_state;
 #endif
 
+#ifdef __cplusplus
+}
 #endif
 
 #endif
 
-#ifdef NBI_LIB_IMPEMENTATION
-#undef NBI_LIB_IMPEMENTATION
+#ifdef NBI_LIB_IMPLEMENTATION
+#undef NBI_LIB_IMPLEMENTATION
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 bool __nbi_echo = false;
 
@@ -194,9 +203,9 @@ void nbi_termios_update() {
 }
 #endif
 
-char nbi_get_chr() {
+char nbi_get_char() {
     if( nbi_get_flag() )
-        return nbi_standard_input();
+        return nbi_std_input();
     else
         return -1;
 }
@@ -225,7 +234,7 @@ bool nbi_get_flag() {
 #endif
 }
 
-char nbi_standard_input() {
+char nbi_std_input() {
 #ifdef __NBI_LIB_WINDOWS
     if( __nbi_echo ) 
         return _getche();
@@ -255,11 +264,15 @@ void nbi_set_echo( bool echo ) {
 }
 
 void nbi_clear() {
-    while( nbi_get_flag() ) nbi_get_chr();
+    while( nbi_get_flag() ) nbi_get_char();
 }
 
 void nbi_wait() {
-    nbi_standard_input();
+    nbi_std_input();
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
