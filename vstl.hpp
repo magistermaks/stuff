@@ -25,15 +25,6 @@
 
 /*
  * VSTL - Very Simple Test Library
- * Originally created for Sequensa,
- * it simple and easy to use.
- * Right now VSTL is not yet finished,
- * but I plan to keep updating it.
- */
-
-/*
- * Usage:
- * -> see magistermaks/sequensa/src/api/tests.cpp
  */
 
 #ifndef VSTL_HPP_INCLUDED
@@ -54,7 +45,7 @@
 #define CHECK_ELSE( value, expected ) for( auto a = value, b = expected; a != b; )
 #define CHECK( value, expected ) CHECK_ELSE( value, expected ) FAIL( "Expected: " + std::to_string( b ) + " got: " + std::to_string( a ) )
 #define REGISTER_EXCEPTION( id, name ) long __vstl_exception__##id = vstl::register_exception( [&] (std::exception_ptr p) -> void { try{ if( p ) std::rethrow_exception(p); } catch( name& e ) { throw vstl::TestFail( e.what() ); } catch ( ... ) {} } )
-#define BEGIN( mode ) int main() { vstl::run( mode ); }
+#define BEGIN( mode ) int main() { return vstl::run( mode ); }
 
 namespace vstl {
 
@@ -86,12 +77,13 @@ namespace vstl {
     std::vector<std::function<void(std::exception_ptr)>> exception_handles;
     int successful_count = 0;
     int failed_count = 0;
-    void run( int mode );
+
+    int run( int mode );
     long register_exception( std::function<void(std::exception_ptr)> handle );
 
 };
 
-void vstl::run( int mode ) {
+int vstl::run( int mode ) {
     for( Test& test : tests ) {
     	if( !test.run( mode ) && mode == VSTL_MODE_STRICT ) {
     		break;
@@ -101,6 +93,13 @@ void vstl::run( int mode ) {
     std::cout << std::endl << "Executed " + std::to_string( vstl::failed_count + vstl::successful_count ) + " tests, " +
         std::to_string( vstl::failed_count ) + " failed, " +
         std::to_string( vstl::successful_count ) + " succeeded." << std::endl;
+
+#ifndef VSTL_RETURN_0
+    return vstl::failed_count;
+#else
+    return 0;
+#endif
+
 }
 
 long vstl::register_exception( std::function<void(std::exception_ptr)> handle ) {
