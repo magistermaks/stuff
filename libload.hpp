@@ -138,7 +138,7 @@ void DynamicLibrary::close() {
 template <typename T> T DynamicLibrary::fetch( const char* name ) {
 	if( this->isLoaded() ) {
 
-#ifdef LIBLOAD_WIN
+#ifdef LIBLOAD_WINDOWS
 		return reinterpret_cast<T>( GetProcAddress( this->data.handle, name ) );
 #endif
 
