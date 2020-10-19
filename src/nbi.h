@@ -1,20 +1,20 @@
 
 /* License:
- * 
+ *
  * MIT License
- * 
+ *
  * Copyright (c) 2020 magistermaks
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,19 +22,19 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- */ 
+ */
 
 /* Main feature of this library is the nbi_get_char(),
  * which is platform independent non-blocking input function. It returns key from input stream (stdin) or
  * -1 if the stream is empty. It removes the returned char from the stream.
- * 
+ *
  * Other functions:
  * void nbi_clear()               - Removes all characters from input stream, so that nbi_get_char() will return -1, and nbi_get_flag() false.
  * char nbi_std_input()           - Waits for key press and returns it, acts like windows' getch() but is platform independent.
  * void nbi_wait()                - Waits for key press, then continues execution.
  * void nbi_set_echo( bool echo ) - Sets current echo mode. When set to true nbi_get_char(), nbi_std_input() will display pressed char, the default value is false.
  * bool nbi_get_flag()            - Returns true if there is any key in the stream, and false otherwise. (platform independent version of _kbhit())
- * 
+ *
  * Functions avaible only on linux-like systems:
  * void nbi_termios_update()      - Must be called after using tcsetattr() from "termios.h".
  */
@@ -55,7 +55,7 @@
  * NBI_LIB_LINUX          - Don't check build environment, assume linux-like.
  * NBI_LIB_ASSUME_STDIO   - Don't include stdio.h, assume already included.
  * NBI_LIB_ASSUME_TERMIOS - Don't include termios.h, assume already included. (If you are using termios you may want to read more about nbi_termios_update() and NBI_LIB_NO_TERMIOS_POP)
- * NBI_LIB_NO_TERMIOS_POP - Is ignored if not compiled on linux, makes nbi_get_char() calls (technically) faster. Breaks input line buffering. 
+ * NBI_LIB_NO_TERMIOS_POP - Is ignored if not compiled on linux, makes nbi_get_char() calls (technically) faster. Breaks input line buffering.
  * NBI_LIB_IMPLEMENTATION - This file will act as .c not .h
  */
 
@@ -219,25 +219,26 @@ bool nbi_get_flag() {
         __nbi_termios_init();
     }
     __nbi_termios_push();
-    
+
     timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
-    
+
     fd_set fd;
     FD_ZERO(&fd);
     FD_SET(0, &fd);
-    
-    return (bool)select(1, &fd, NULL, NULL, &timeout);
+
+    bool flag = (bool)select(1, &fd, NULL, NULL, &timeout);
 #ifndef NBI_LIB_NO_TERMIOS_POP
     __nbi_termios_pop();
 #endif
+    return flag;
 #endif
 }
 
 char nbi_std_input() {
 #ifdef __NBI_LIB_WINDOWS
-    if( __nbi_echo ) 
+    if( __nbi_echo )
         return _getche();
     else
         return _getch();
@@ -246,10 +247,11 @@ char nbi_std_input() {
         __nbi_termios_init();
     }
     __nbi_termios_push();
-    return getchar();
+    char chr = getchar();
 #ifndef NBI_LIB_NO_TERMIOS_POP
     __nbi_termios_pop();
 #endif
+    return chr;
 #endif
 }
 
