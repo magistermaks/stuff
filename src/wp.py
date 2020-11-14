@@ -7,9 +7,10 @@ import inspect
 arg1 = sys.argv[1] if len(sys.argv) > 1 else "";
 arg2 = sys.argv[2] if len(sys.argv) > 2 else "";
 workspace = os.path.dirname( os.path.abspath( inspect.stack()[0][1] ) );
+dbname = "waypoint.db"
 
-if not os.path.exists( workspace + "/database.dat" ):
-    with open( workspace + "/database.dat", "w" ): pass
+if not os.path.exists( workspace + "/" + dbname ):
+    with open( workspace + "/" + dbname, "w" ): pass
 
 def change_directory( dest ):
     import fcntl, termios, pipes
@@ -23,7 +24,7 @@ def change_directory( dest ):
     os.system("stty echo")
 
 def read_waypoint_database():
-    dbfile = open( workspace + "/database.dat", "r" )
+    dbfile = open( workspace + "/" + dbname, "r" )
     content = dbfile.read()
     
     if content == "":
@@ -40,7 +41,7 @@ def read_waypoint_database():
     return database
 
 def save_waypoint_database( database ):
-    dbfile = open( workspace + "/database.dat", "w" )
+    dbfile = open( workspace + "/" + dbname, "w" )
 
     for waypoint in database.keys():
         dbfile.write( waypoint + " => " + database[ waypoint ] + "\n" )
@@ -61,13 +62,29 @@ def list_waypoints():
 
 def remove_waypoint( waypoint ):
     db = read_waypoint_database()
-    db.pop( waypoint, None )
-    save_waypoint_database( db )
+    if waypoint in db:
+        db.pop( waypoint, None )
+        save_waypoint_database( db )
+    else:
+        print("No such waypoint!");
+
+def peek_waypoint( waypoint ):
+    db = read_waypoint_database()
+    if waypoint in db:
+        print( db[waypoint] );
+    else:
+        print("No such waypoint!");
 
 def set_waypoint( waypoint ):
-    if waypoint in ["go", "set", "rem", "list", "help"]:
-        print("Unallowed waypoint name!");
+    if waypoint == "":
+        print("Invalid argument!");
         return
+
+    if waypoint in ["go", "set", "rem", "peek", "ls", "help"]:
+        print("Unallowed waypoint name!");
+        print("Set anyway? The shorthand syntax will be unavailable. y/n");
+        if input() != 'y':
+            return
     
     db = read_waypoint_database()
     db[waypoint] = os.getcwd()
@@ -89,18 +106,23 @@ if arg1 == "rem":
     remove_waypoint(arg2)
     exit(0)
 
-if arg1 == "list":
+if arg1 == "peek":
+    peek_waypoint(arg2)
+    exit(0)
+
+if arg1 == "ls":
     list_waypoints()
     exit(0)
 
 if arg1 == "help":
-    print( "Directory waypoint utility v1.0" )
-    print( "  go [waypoint]  - go to waypoint" )
-    print( "  set [waypoint] - set waypoint" )
-    print( "  rem [waypoint] - remove waypoint" )
-    print( "  list           - list all waypoints" )
-    print( "  help           - show this help page" )
-    print( "  [waypoint]     - go to waypoint" )
+    print( "Directory waypoint utility v1.1" )
+    print( "  go [waypoint]   - go to waypoint" )
+    print( "  set [waypoint]  - set waypoint" )
+    print( "  rem [waypoint]  - remove waypoint" )
+    print( "  peek [waypoint] - print waypoint's target" )
+    print( "  ls              - list all waypoints" )
+    print( "  help            - show this help page" )
+    print( "  [waypoint]      - go to waypoint" )
     exit(0)
 
 goto_waypoint(arg1)
