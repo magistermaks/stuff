@@ -2,7 +2,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 magistermaks
+ * Copyright (c) 2020, 2021 magistermaks
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,70 +34,81 @@
 #include <functional>
 #include <exception>
 #include <string>
+#include <chrono>
 #include <iostream>
 
-#define VSTL_MODE_STRICT 2
 #define VSTL_MODE_LENIENT 1
+#define VSTL_MODE_STRICT 2
+
+#ifndef VSTL_TEST_COUNT
+#	define VSTL_TEST_COUNT 1
+#endif
 
 #define ASSERT( condition, message ) if( !(condition) ) FAIL( message )
-#define TEST( name, ... ) long __vstl_test__##name = vstl::Test( #name, __LINE__, [&] () -> void __VA_ARGS__ ).add();
+#define TEST( name, ... ) long __vstl_test__##name = vstl::Test( #name, __LINE__, [] () -> void __VA_ARGS__ ).add();
 #define FAIL( what ) throw vstl::TestFail( what );
-#define CHECK_ELSE( value, expected ) for( auto a = value, b = expected; a != b; )
-#define CHECK( value, expected ) CHECK_ELSE( value, expected ) FAIL( "Expected: " + std::to_string( b ) + " got: " + std::to_string( a ) )
-#define REGISTER_EXCEPTION( id, name ) long __vstl_exception__##id = vstl::register_exception( [&] (std::exception_ptr p) -> void { try{ if( p ) std::rethrow_exception(p); } catch( name& e ) { throw vstl::TestFail( e.what() ); } catch ( ... ) {} } )
+#define CHECK_ELSE( value, expected ) for( auto __vstl_a__ = value, __vstl_b__ = expected; __vstl_a__ != __vstl_b__; )
+#define CHECK( value, expected ) CHECK_ELSE( value, expected ) FAIL( "Expected: " + std::to_string( __vstl_b__ ) + " got: " + std::to_string( __vstl_a__ ) )
+#define REGISTER_EXCEPTION( id, name ) long __vstl_exception__##id = vstl::register_exception( [] (std::exception_ptr p) -> void { try{ if( p ) std::rethrow_exception(p); } catch( name& e ) { throw vstl::TestFail( e.what() ); } catch ( ... ) {} } )
 #define BEGIN( mode ) int main() { return vstl::run( mode ); }
+#define EXPECT_ERR( ... ) try{ __VA_ARGS__; FAIL( "Expected exception!" ); } catch (...) {}
 
 namespace vstl {
 
-    class TestFail: public std::exception {
+	class TestFail: public std::exception {
 
-        public:
-            explicit TestFail ( const std::string& error );
-            virtual const char* what() const throw();
+		public:
+			explicit TestFail ( const std::string& error );
+			virtual const char* what() const throw();
 
-        private:
-            std::string error;
-    };
+		private:
+			std::string error;
+	};
 
-    class Test {
+	class Test {
 
-        public:
-            Test( std::string name, int line, std::function<void(void)> lambda );
-            long add();
-            bool run( int mode );
+		public:
+			Test( std::string name, int line, std::function<void(void)> lambda );
+			long add();
+			bool run( int mode );
 
-        private:
-            const std::string name;
-            const int line;
-            const std::function<void(void)> lambda;
+		private:
+			const std::string name;
+			const int line;
+			const std::function<void(void)> lambda;
 
-    };
+	};
 
-    std::vector<Test> tests;
-    std::vector<std::function<void(std::exception_ptr)>> exception_handles;
-    int successful_count = 0;
-    int failed_count = 0;
+	std::vector<Test> tests;
+	std::vector<std::function<void(std::exception_ptr)>> exception_handles;
+	int successful_count = 0;
+	int failed_count = 0;
 
-    int run( int mode );
-    long register_exception( std::function<void(std::exception_ptr)> handle );
+	int run( int mode );
+	long register_exception( std::function<void(std::exception_ptr)> handle );
 
 };
 
 int vstl::run( int mode ) {
-    for( Test& test : tests ) {
-    	if( !test.run( mode ) && mode == VSTL_MODE_STRICT ) {
-    		break;
-    	}
-    }
+	auto start = std::chrono::steady_clock::now();
 
-    std::cout << std::endl << "Executed " + std::to_string( vstl::failed_count + vstl::successful_count ) + " tests, " +
-        std::to_string( vstl::failed_count ) + " failed, " +
-        std::to_string( vstl::successful_count ) + " succeeded." << std::endl;
+	for( Test& test : tests ) {
+		if( !test.run( mode ) && mode == VSTL_MODE_STRICT ) {
+			break;
+		}
+	}
+
+	auto time = std::chrono::steady_clock::now() - start;
+
+	std::cout << std::endl << "Executed " + std::to_string( vstl::failed_count + vstl::successful_count ) + " tests, " +
+		std::to_string( vstl::failed_count ) + " failed, " +
+		std::to_string( vstl::successful_count ) + " succeeded. (taken: " <<
+		std::chrono::duration<double, std::milli>(time).count() << "ms)" << std::endl;
 
 #ifndef VSTL_RETURN_0
-    return vstl::failed_count;
+	return vstl::failed_count;
 #else
-    return 0;
+	return 0;
 #endif
 
 }
@@ -111,44 +122,54 @@ long vstl::register_exception( std::function<void(std::exception_ptr)> handle ) 
 vstl::Test::Test( std::string _name, int _line, std::function<void(void)> _lambda ): name( _name ), line( _line ), lambda( _lambda ) {}
 
 long vstl::Test::add() {
-    vstl::tests.push_back( *this );
-    return vstl::tests.size() - 1;
+	vstl::tests.push_back( *this );
+	return vstl::tests.size() - 1;
 }
 
 bool vstl::Test::run( int mode ) {
-    try{
-        this->lambda();
+	try{
+		for( int i = 0; i < VSTL_TEST_COUNT; i ++ ) this->lambda();
 	} catch (vstl::TestFail &fail) {
-        std::cerr << "Test '" + this->name + "' failed! Error message: " << fail.what() << std::endl;
-        vstl::failed_count ++;
-        return false;
-    }catch( ... ) {
-        std::exception_ptr p = std::current_exception();
+		std::cerr << "Test '" + this->name + "' failed! Error message: " << fail.what() << std::endl;
+		vstl::failed_count ++;
+		return false;
+	}catch( ... ) {
+		std::exception_ptr p = std::current_exception();
 
-        for( auto& handle : vstl::exception_handles ) {
-        	try{
-        		handle( p );
-        	}catch( vstl::TestFail &fail ) {
-        		std::cerr << "Test '" + this->name + "' failed! Error message: " << fail.what() << std::endl;
-        		vstl::failed_count ++;
-        		return false;
-        	}
-        }
+		for( auto& handle : vstl::exception_handles ) {
+			try{
+				handle( p );
+			}catch( vstl::TestFail &fail ) {
+				std::cerr << "Test '" + this->name + "' failed! Error message: " << fail.what() << std::endl;
+				vstl::failed_count ++;
+				return false;
+			}
+		}
 
-        std::cerr << "Test '" + this->name + "' failed! Unregistered exception thrown! Error: " << (p ? p.__cxa_exception_type()->name() : "unknown") << std::endl;
-        vstl::failed_count ++;
-        return false;
-    }
+		try{
+			std::rethrow_exception(p);
+		}catch( std::exception& err ) {
+			std::cerr << "Test '" + this->name + "' failed! Unregistered exception thrown! Error: " << err.what() << std::endl;
+			vstl::failed_count ++;
+			return false;
+		}catch( ... ) {
+			std::cerr << "Test '" + this->name + "' failed! Unregistered exception thrown! Error: unknown" << std::endl;
+			vstl::failed_count ++;
+			return false;
+		}
 
-    std::cout << "Test '" + this->name + "' successful!" << std::endl;
-    vstl::successful_count ++;
-    return true;
+	}
+
+	std::cout << "Test '" + this->name + "' successful!" << std::endl;
+	vstl::successful_count ++;
+	return true;
 }
 
 vstl::TestFail::TestFail( const std::string& _error ): error( _error ) {}
 
 const char* vstl::TestFail::what() const throw() {
-    return this->error.c_str();
+	return this->error.c_str();
 }
 
 #endif // VSTL_HPP_INCLUDED
+
