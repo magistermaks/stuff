@@ -1,20 +1,20 @@
 
 /* License:
- * 
+ *
  * MIT License
- * 
+ *
  * Copyright (c) 2020 magistermaks
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,7 +22,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- */ 
+ */
 
 /* Options: (define to enable, only one can be selected)
  * TERMCO_NONE            - Define only base. (only __TERMCO_ANSI_* codes)
@@ -42,16 +42,22 @@
  *  F_<COLOR> - Set foreground color.
  *  B_<COLOR> - Set background color.
  *  S_<BOLD/UNDERLINE/BLINK/DIM> - Set text feature.
- * 
+ *  termco_init() to enable, termco_exit() to disable
+ *
  * Colors:
  *  WHITE, BLACK, GRAY, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN.
- * 
+ *
  * Light/Strong variants:
  *  L_GRAY, L_RED, L_GREEN, L_YELLOW, L_BLUE, L_MAGENTA, L_CYAN
  */
 
 /* Example:
- * std::cout << F_RED << " red " << F_BLUE << S_BOLD << " bold + blue " << F_RESET << " just bold  " << S_RESET << " default " << std::endl;
+ *  int main() {
+ *    termco_init();
+ *    std::cout << F_RED << " red " << F_BLUE << S_BOLD << " bold + blue " << F_RESET << " just bold  " << S_RESET << " default " << std::endl;
+ *    termco_exit();
+ *    return 0;
+ *  }
  */
 
 /* Versions:
@@ -87,10 +93,10 @@ extern "C" {
 #include <windows.h>
 #endif
 
-#ifdef TERMCO_IMPLEMENTATION 
-    
+#ifdef TERMCO_IMPLEMENTATION
+
 void termco_exit() {
-    
+
 #ifdef __TERMCO_WINDOWS
     HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD mode = 0;
@@ -98,11 +104,11 @@ void termco_exit() {
     mode &= ~4;
     SetConsoleMode(handle, mode);
 #endif
-    
-}    
+
+}
 
 void termco_init() {
-    
+
 #ifdef __TERMCO_WINDOWS
     HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD mode = 0;
@@ -184,13 +190,13 @@ void termco_exit();
 #endif
 #endif
 #endif
-    
+
 #ifdef TERMCO_NONE
 #ifdef TERMCO_COLOR_ID
 #error "TERMCO_COLOR_ID requires TERMCO_WIN_ANSI or TERMCO_STD_ANSI!"
 #endif
 #endif
-    
+
 #ifdef TERMCO_STD_ANSI
 
 #ifndef __TERMCO_STD_ANSI
@@ -302,9 +308,9 @@ void termco_exit();
 #endif
 
 #endif
-    
+
 #ifdef TERMCO_COLOR_ID
-    
+
 #ifndef __TERMCO_COLOR_ID
 #define __TERMCO_COLOR_ID
 
@@ -351,13 +357,13 @@ void termco_exit();
 #define ID_S_RESET 40
 
 #endif
-    
+
 #ifndef __TERMCO_COLOR_TYPE
-#define __TERMCO_COLOR_TYPE   
-typedef unsigned char color_t;  
+#define __TERMCO_COLOR_TYPE
+typedef unsigned char color_t;
 #endif
 
-#ifdef TERMCO_IMPLEMENTATION 
+#ifdef TERMCO_IMPLEMENTATION
 
 const char * termco_get( color_t color_id ) {
     static char colors[41][7] = {
@@ -403,7 +409,7 @@ const char * termco_get( color_t color_id ) {
         B_L_CYAN,
         S_RESET
     };
-    
+
     return colors[color_id];
 }
 
