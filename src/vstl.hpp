@@ -2,7 +2,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020, 2021 magistermaks
+ * Copyright (c) 2020 - 2023 magistermaks
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,149 +27,229 @@
  * VSTL - Very Simple Test Library
  */
 
-#ifndef VSTL_HPP_INCLUDED
-#define VSTL_HPP_INCLUDED
+#pragma once
+
+#ifndef VSTL_TEST_COUNT
+#define VSTL_TEST_COUNT 1
+#endif
 
 #include <vector>
 #include <functional>
 #include <exception>
-#include <string>
 #include <chrono>
 #include <iostream>
 
-#define VSTL_MODE_LENIENT 1
-#define VSTL_MODE_STRICT 2
+#define VSTL_VERSION "3.0"
 
-#ifndef VSTL_TEST_COUNT
-#	define VSTL_TEST_COUNT 1
-#endif
+// internal macros, don't use :gun:
+#define VSTL_UNEQUAL(va, vb) for(auto __vstl_a__ = (va), __vstl_b__ = (decltype(__vstl_a__)) (vb); __vstl_a__ != __vstl_b__;)
+#define VSTL_ENTRYPOINT int main()
+#define VSTL_BLC ;
+#define VSTL_JOIN(prefix, suffix) prefix##suffix
+#define VSTL_CAT(prefix, suffix) VSTL_JOIN(prefix, suffix)
+#define VSTL_UNIQUE(prefix) VSTL_CAT(prefix, __LINE__)
+#define VSTL_STR_VALUE(value) #value
+#define VSTL_TO_STR(macro) VSTL_STR_VALUE(macro)
+#define VSTL_LINE "on line " VSTL_TO_STR(__LINE__)
+#define VSTL_EXCEPT "Expected exception " VSTL_LINE "!"
+#define VSTL_RETHROW catch (vstl::TestFail& fail) { throw fail; }
 
-#define ASSERT( condition, message ) if( !(condition) ) FAIL( message )
-#define TEST( name, ... ) long __vstl_test__##name = vstl::Test( #name, __LINE__, [] () -> void __VA_ARGS__ ).add();
-#define FAIL( what ) throw vstl::TestFail( what );
-#define CHECK_ELSE( value, expected ) for( auto __vstl_a__ = value, __vstl_b__ = expected; __vstl_a__ != __vstl_b__; )
-#define CHECK( value, expected ) CHECK_ELSE( value, expected ) FAIL( "Expected: " + std::to_string( __vstl_b__ ) + " got: " + std::to_string( __vstl_a__ ) )
-#define REGISTER_EXCEPTION( id, name ) long __vstl_exception__##id = vstl::register_exception( [] (std::exception_ptr p) -> void { try{ if( p ) std::rethrow_exception(p); } catch( name& e ) { throw vstl::TestFail( e.what() ); } catch ( ... ) {} } )
-#define BEGIN( mode ) int main() { return vstl::run( mode ); }
-#define EXPECT_ERR( ... ) try{ __VA_ARGS__; FAIL( "Expected exception!" ); } catch (...) {}
+/// used to define a test of the given [name]: TEST(example_test) { /* the test */ }
+#define TEST(name)          VSTL_BLC  vstl::Test VSTL_UNIQUE(__vstl_test__) = #name+[] ()
 
-namespace vstl {
+/// used as a starting point for the VSTL, place anywhere in the test file, preferebly at the end: BEGIN(VSTL_MODE_LENIENT)
+#define BEGIN(mode)         VSTL_BLC  VSTL_ENTRYPOINT { return vstl::run(std::cout, mode); }
 
-	class TestFail: public std::exception {
+/// used to defined error handlers (converters), place anywhere in the test file. use like this: HANDLER { CATCH_PTR (my_error_class& err) { FAIL(err.str())  } }
+#define HANDLER             VSTL_BLC  vstl::Handler VSTL_UNIQUE(__vstl_handler__) = "handler"+[] (std::exception_ptr ptr)
 
-		public:
-			explicit TestFail ( const std::string& error );
-			virtual const char* what() const throw();
+/// helper used in defining error handlers
+#define CATCH_PTR                     try { if(ptr) std::rethrow_exception(ptr); } catch
 
-		private:
-			std::string error;
-	};
+/// failes the test with the given [reason] when called
+#define FAIL(reason)                  vstl::fail((reason));
 
-	class Test {
+/// asserts the [condition] is true, otherwise failes the test with the custom [reason]
+#define ASSERT_MSG(condition, reason) if(!(condition)) FAIL(reason)
 
-		public:
-			Test( std::string name, int line, std::function<void(void)> lambda );
-			long add();
-			bool run( int mode );
+/// asserts the [condition] is true, otherwise failes the test
+#define ASSERT(condition)             ASSERT_MSG(condition, "Expected " #condition " to be true, but it was not, " VSTL_LINE "!")
 
-		private:
-			const std::string name;
-			const int line;
-			const std::function<void(void)> lambda;
+/// checks if the [va] equals [vb], otherwise failes the test
+#define CHECK(va, vb)                 VSTL_UNEQUAL(va, vb) FAIL("Expected " #va " to be equal " #vb ", but it was not, " VSTL_LINE "!")
 
-	};
+/// checks if the given block [...] throws an exception, otherwise failes the test
+#define EXPECT_ANY(...)               try { __VA_ARGS__; FAIL(VSTL_EXCEPT); } VSTL_RETHROW catch (...) {}
 
-	std::vector<Test> tests;
-	std::vector<std::function<void(std::exception_ptr)>> exception_handles;
-	int successful_count = 0;
-	int failed_count = 0;
+/// checks if the given block [...] throws an exception of the given [type], otherwise failes the test
+#define EXPECT(type, ...)             try{ __VA_ARGS__; FAIL(VSTL_EXCEPT); } VSTL_RETHROW catch (type& t) {} catch (...) { FAIL("Expected exception of type " #type ", " VSTL_LINE "!"); }
 
-	int run( int mode );
-	long register_exception( std::function<void(std::exception_ptr)> handle );
+enum TestMode : short {
+
+	/// will skip failed tests
+	VSTL_MODE_LENIENT,
+
+	/// will stop as soon any any test failes
+	VSTL_MODE_STRICT
 
 };
 
-int vstl::run( int mode ) {
-	auto start = std::chrono::steady_clock::now();
+// internal namespace, don't use :gun:
+namespace vstl {
 
-	for( Test& test : tests ) {
-		if( !test.run( mode ) && mode == VSTL_MODE_STRICT ) {
-			break;
-		}
+	struct Test;
+	struct Handler;
+
+	std::vector<Test> tests;
+	std::vector<Handler> handlers;
+	size_t failed = 0, successful = 0;
+
+	/// add new test
+	void add_test(const Test& test) {
+		tests.push_back(test);
 	}
 
-	auto time = std::chrono::steady_clock::now() - start;
+	/// add new error handler
+	void add_handler(const Handler& handler) {
+		handlers.push_back(handler);
+	}
 
-	std::cout << std::endl << "Executed " + std::to_string( vstl::failed_count + vstl::successful_count ) + " tests, " +
-		std::to_string( vstl::failed_count ) + " failed, " +
-		std::to_string( vstl::successful_count ) + " succeeded. (taken: " <<
-		std::chrono::duration<double, std::milli>(time).count() << "ms)" << std::endl;
+	struct TestFail final: public std::runtime_error {
 
-#ifndef VSTL_RETURN_0
-	return vstl::failed_count;
-#else
-	return 0;
-#endif
+		explicit TestFail(const std::string& error)
+		: runtime_error(error) {}
 
-}
+	};
 
-long vstl::register_exception( std::function<void(std::exception_ptr)> handle ) {
-	exception_handles.push_back( handle );
-	return exception_handles.size() - 1;
-}
+	struct Handler final {
 
+		using Func = std::function<void(std::exception_ptr)>;
 
-vstl::Test::Test( std::string _name, int _line, std::function<void(void)> _lambda ): name( _name ), line( _line ), lambda( _lambda ) {}
+		const Func func;
 
-long vstl::Test::add() {
-	vstl::tests.push_back( *this );
-	return vstl::tests.size() - 1;
-}
+		Handler(const Func& func)
+		: func(func) {
+			vstl::add_handler(*this);
+		}
 
-bool vstl::Test::run( int mode ) {
-	try{
-		for( int i = 0; i < VSTL_TEST_COUNT; i ++ ) this->lambda();
-	} catch (vstl::TestFail &fail) {
-		std::cerr << "Test '" + this->name + "' failed! Error message: " << fail.what() << std::endl;
-		vstl::failed_count ++;
-		return false;
-	}catch( ... ) {
-		std::exception_ptr p = std::current_exception();
+		void call(std::exception_ptr ptr) const {
+			func(ptr);
+		}
 
-		for( auto& handle : vstl::exception_handles ) {
-			try{
-				handle( p );
-			}catch( vstl::TestFail &fail ) {
-				std::cerr << "Test '" + this->name + "' failed! Error message: " << fail.what() << std::endl;
-				vstl::failed_count ++;
-				return false;
+	};
+
+	struct Test final {
+
+		using Func = std::function<void(void)>;
+
+		const char* name;
+		const Func func;
+
+		Test(const char* name, const Func& func)
+		: name(name), func(func) {
+			vstl::add_test(*this);
+		}
+
+		void call(const size_t count) const {
+			for (size_t i = 0; i < count; i ++) {
+				func();
 			}
 		}
 
-		try{
-			std::rethrow_exception(p);
-		}catch( std::exception& err ) {
-			std::cerr << "Test '" + this->name + "' failed! Unregistered exception thrown! Error: " << err.what() << std::endl;
-			vstl::failed_count ++;
-			return false;
-		}catch( ... ) {
-			std::cerr << "Test '" + this->name + "' failed! Unregistered exception thrown! Error: unknown" << std::endl;
-			vstl::failed_count ++;
-			return false;
+		bool run(std::ostream& out) const throw() {
+			try {
+				call(VSTL_TEST_COUNT);
+
+			} catch (vstl::TestFail& fail) {
+				out << "Test '" << this->name << "' failed! Error: " << fail.what() << std::endl;
+				vstl::failed ++;
+				return false;
+
+			} catch (...) {
+				std::exception_ptr ptr = std::current_exception();
+
+				// try to convert the error using the defined error handlers
+				for (const Handler& handler : vstl::handlers) {
+					try {
+						handler.call(ptr);
+					} catch(vstl::TestFail& fail) {
+						out << "Test '" << this->name << "' failed! Error: " << fail.what() << std::endl;
+						vstl::failed ++;
+						return false;
+					} catch (...) {
+						// ignore
+					}
+				}
+
+				// everything has failed us, just try to print some reason
+				try {
+					std::rethrow_exception(ptr);
+				} catch (std::exception& err) {
+					out << "Test '" << this->name << "' failed! Unregistered exception thrown! Error: " << err.what() << std::endl;
+				} catch (const char* err) {
+					out << "Test '" << this->name << "' failed! Unregistered exception thrown! Error: " << err << std::endl;
+				} catch (int err) {
+					out << "Test '" << this->name << "' failed! Unregistered exception thrown! Error: " << err << std::endl;
+				} catch (...) {
+					out << "Test '" << this->name << "' failed! Unregistered exception thrown! Error: unknown" << std::endl;
+				}
+
+				vstl::failed ++;
+				return false;
+			}
+
+			out << "Test '" << this->name << "' successful!" << std::endl;
+			vstl::successful ++;
+			return true;
 		}
 
+	};
+
+	void summary(std::ostream& out, const auto& time) {
+		size_t executed = vstl::failed + vstl::successful;
+		double millis = std::chrono::duration<double, std::milli>(time).count();
+
+		out << std::endl << "Executed " << executed << " ";
+		out << (executed == 1 ? "test" : "tests") << ", ";
+		out << vstl::failed << " failed, ";
+		out << vstl::successful << " succeeded.";
+		out << " (time: " << millis << "ms)";
+		out << std::endl;
 	}
 
-	std::cout << "Test '" + this->name + "' successful!" << std::endl;
-	vstl::successful_count ++;
-	return true;
+	int run(std::ostream& out, TestMode mode) {
+		const auto start = std::chrono::steady_clock::now();
+
+		for (const Test& test : tests) {
+			if (!test.run(out) && mode == VSTL_MODE_STRICT) {
+				break;
+			}
+		}
+
+		summary(out, std::chrono::steady_clock::now() - start);
+
+		#ifdef VSTL_RETURN_ZERO
+		return 0;
+		#endif
+
+		#ifdef VSTL_RETURN_BOOL
+		return vstl::failed != 0 ? 1 : 0;
+		#endif
+
+		return vstl::failed;
+	}
+
+	template<typename S>
+	void fail(const S& message) {
+		throw TestFail {message};
+	}
+
 }
 
-vstl::TestFail::TestFail( const std::string& _error ): error( _error ) {}
-
-const char* vstl::TestFail::what() const throw() {
-	return this->error.c_str();
+vstl::Test operator +(const char* name, const vstl::Test::Func& tester) {
+    return vstl::Test {name, tester};
 }
 
-#endif // VSTL_HPP_INCLUDED
-
+vstl::Handler operator +(const char* name, const vstl::Handler::Func& handler) {
+    return vstl::Handler {handler};
+}
